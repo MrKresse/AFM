@@ -1,0 +1,4 @@
+*.jpk-force
+*.mat
+raw/
+*.zip
