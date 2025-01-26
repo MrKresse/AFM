@@ -68,6 +68,8 @@ tmpX_all=tmpX_all';
 tmpX_id_all=tmpX_id_all';
 
 %calculate the distance between curves
+
+
 sd = pairdistances(tmpX_all);
 tmptmp=median(sd,2);
 [iy,ii]=sort(tmptmp);
@@ -82,6 +84,7 @@ view(0,90)
 ii2=greedycluster(sd2,ii,0.2);
 
 ii=ii2';
+% 
 % %second iteration
 sd = pairdistances(tmpX_all(:,ii));
 sd2 = logdistances(tmpX_all(:,ii),sd);
@@ -97,15 +100,39 @@ ii=ii2';
 sd = pairdistances(tmpX_all(:,ii));
 sd2 = logdistances(tmpX_all,sd);
 
+% sd=0*ones(size(tmpX_all,2),size(tmpX_all,2));
+% for iX=1:size(tmpX_all,2);
+% %     sdx=[sdx median(tmpX_all(iarr(1300:1400),ii(iX)))];
+%     for iY=1:size(tmpX_all,2);
+%         tmptmp=tmpX_all(:,ii(iX)).*tmpX_all(:,ii(iY));
+%         iarr=find(isnan(tmptmp)==0);
+%         sd(iX,iY)=mean(power(tmpX_all(iarr,ii(iX))-tmpX_all(iarr,ii(iY)),2));
+%     end;
+% end
+% 
+% sd2=0*ones(size(tmpX_all,2),size(tmpX_all,2));
+% for iX=1:size(tmpX_all,2);
+%     for iY=iX+1:size(tmpX_all,2);
+%         iarr=log(sd(:,iX))-log(sd(:,iY));
+%         iarr=iarr(isinf(iarr)==0);
+%         sd2(iX,iY)=mean(iarr.*iarr);
+%         sd2(iY,iX)=sd2(iX,iY);
+%     end;
+% end
+
 % show clustermap
 figure
 pcolor(sd2)
 view(0,90)
+shading interp
+
+% % show bleach correction
+% figure;plot(bleach_arr_back)
 
 % % show full cluster
 % figure;for iX=[147 164 174 176 177 179:185 188:208];plot((1:size(tmpX_all,1))*dt,tmpX_all(:,ii(iX)),'-','Tag',num2str(tmpX_id_all(ii(iX))));hold on;end;axis([0 70*dt 6 9.5])
 % % show cluster curve-by-curve
-figure;for iX=607:671;plot((1:size(tmpX_all,1))*dt,tmpX_all(:,ii(iX)),'-','Tag',num2str(tmpX_id_all(ii(iX))));title(num2str(iX));axis([0 70*dt 6 9.5]);pause;end
+figure;for iX=[607:671];plot((1:size(tmpX_all,1))*dt,tmpX_all(:,ii(iX)),'-','Tag',num2str(tmpX_id_all(ii(iX))));title(num2str(iX));axis([0 70*dt 6 9.5]);pause;end
 
 %%%
 
