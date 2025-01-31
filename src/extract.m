@@ -5,9 +5,9 @@ function extract(path_raw, path_incoming, base_str, channel)
     
     % Extract the relevant data for approach and deflection
     approach_height = force_curve(channel).extend.Data_nominal;
-    approach_deflection = force_curve(5).extend.Data_distance;
+    approach_deflection = force_curve(5).extend.Data_Raw;
     retract_height = force_curve(channel).retract.Data_nominal;
-    retract_deflection = force_curve(5).retract.Data_distance;
+    retract_deflection = force_curve(5).retract.Data_Raw;
     
     approach_height= approach_height-min(approach_height);
     retract_height=retract_height-min(retract_height);
