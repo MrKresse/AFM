@@ -35,7 +35,7 @@ function [loading_rate, unbinding_force, z_model, F_model] = fit_mFJC(path_proce
     hold(ax, 'on');
     
     % Define a force range for the model (using positive values for computation)
-    F_range = linspace(0, 1e-11, 100);
+    F_range = linspace(0, 2e-11, 100);
     z_model = mFJC(p_fit, F_range);
     
     % Revert the force axis to its original orientation
