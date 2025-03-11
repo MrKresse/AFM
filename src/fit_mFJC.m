@@ -1,0 +1,65 @@
+function [loading_rate, unbinding_force, z_model, F_model] = fit_mFJC(path_processed, base_str, min_sep, max_sep, l_cont, T, l_kuhn, k_segment, v, ax)
+    % Compute thermal energy kBT in J
+    kBT = 1.380649e-23 * T;
+
+    % Load the data
+    data = load(fullfile(path_processed, base_str));
+    F = data.scaled_deflection; % Force data (N)
+    z = data.shifted_height;    % Extension data (m)
+    
+    % Select the fitting interval using the provided indices.
+    inds = (z <= max_sep) & (z >= min_sep);
+    F_fit = F(inds);
+    z_fit = z(inds);
+    
+    % Define the modified freely jointed chain (mFJC) model.
+    % p(1): contour length L_c, p(2): Kuhn length l_k, p(3): segment elasticity k_segment.
+    mFJC = @(p, F_val) p(1) .* (coth(F_val .* p(2) ./ kBT) - kBT./(F_val .* p(2))) .* (1 + F_val./(p(3).*p(2)));
+    
+    % Set the initial parameter guess vector.
+    p0 = [l_cont, l_kuhn, k_segment];
+    
+    % Set lower and upper bounds for the parameters.
+    lb = [0, 0, 0];
+    ub = [Inf, Inf, Inf];
+    
+    % Perform the nonlinear least squares fit using lsqcurvefit.
+    options = optimoptions('lsqcurvefit', 'Display','iter', ...
+        'FunctionTolerance',1e-25, 'OptimalityTolerance',1e-25, 'StepTolerance',1e-25);
+    [p_fit, ~, ~, ~, ~] = lsqcurvefit(mFJC, p0, -F_fit, z_fit, lb, ub, options);
+    
+    % Plot the original data and the fitted mFJC model on the provided axes.
+    axes(ax);  % Switch to the target axes
+    cla(ax);
+    plot(ax, z, F, 'b', 'DisplayName', 'Data');
+    hold(ax, 'on');
+    
+    % Define a force range for the model (using positive values for computation)
+    F_range = linspace(0, 1e-11, 100);
+    z_model = mFJC(p_fit, F_range);
+    
+    % Revert the force axis to its original orientation
+    F_model = -F_range;
+    
+    % Plot the fitted curve
+    plot(ax, z_model, F_model, 'r-', 'LineWidth',2, 'DisplayName', 'mFJC Fit');
+    legend(ax, 'show');
+    grid(ax, 'on');
+    hold(ax, 'off');
+    
+    % Choose an index corresponding to the rupture point in the experimental data.
+    % Here, unbinding_force is taken as the minimum (most negative) force in F_fit.
+    [unbinding_force, ~] = min(F_fit);
+    
+    % Compute the gradient of the model force curve (dF/dz).
+    dF_dz_model = gradient(F_model, z_model);  % gradient of F_model with respect to z_model
+    
+    % Find the model index where the force is closest to the experimental rupture force.
+    [~, i_model] = min(abs(F_model - unbinding_force));
+    
+    % Effective stiffness at the rupture point:
+    k_eff = dF_dz_model(i_model);
+    
+    % Compute the loading rate:
+    loading_rate = v * k_eff;  % in N/s
+end
