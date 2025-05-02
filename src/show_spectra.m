@@ -1,9 +1,9 @@
 
-function show_spectra(path_processed, noise_str)
+function show_spectra(noise_spec)
 NoPeaks=1;
-PeakArr=[0 4e4];
-L=349.69e-6;   % 350µm lang, copy C096
-w=32.43e-6;    %  35µm breit, copy C096
+PeakArr=[3 1000];
+L=205e-6;   % 350µm lang, copy C096
+w=40e-6;    %  35µm breit, copy C096
 invols=110e-9;
 %
 
@@ -20,10 +20,10 @@ rho_fl = 997; % Dichte Wasser
 eta =1e-3; % Viskosität wasser
 
 
-file_str=strcat(path_processed,noise_str);
-fid = fopen(file_str,'r','s');
-noise_spec=fread(fid,500000,'single');
-fclose(fid);
+% file_str=strcat(path_processed,noise_str);
+% fid = fopen(file_str,'r','s');
+% noise_spec=fread(fid,500000,'single');
+% fclose(fid);
 
 %noise_spec=noise_spec-1e-10;            %% AD-noise, Taken from VI
 noise_spec=noise_spec*invols*invols;
@@ -37,7 +37,7 @@ for nJ=1:NoPeaks
   %Mitte bestimmen
   [k,l]=max(noise_spec(PeakArr(nJ,1):PeakArr(nJ,2)));
   l=l+PeakArr(nJ,1)-1;
-  pp=polyfit((l-300:l+300)'-1,noise_spec(l-300:l+300),2);
+  pp=polyfit((l-100:l+100)'-1,noise_spec(l-100:l+100),2);
   x0=-pp(2)./(2*pp(1));
   s=1./(pp(3)-pp(2)*pp(2)/4/pp(1));
   
@@ -65,9 +65,9 @@ for nJ=1:NoPeaks
     tau=log10(Re);
     ReOmega=polyval([.00069085 -0.0035117 0.044055 -0.12886 0.46842 -0.48274 0.91324],tau)./polyval([.00069085 -0.0035862 0.045155 -0.13444 0.4869 -0.56964 1],tau);
     ImOmega=polyval([-0.000044510 + 0.000064577 -0.00010961 0.016294 -0.029256 -0.024134],tau)./polyval([0.00286361 -0.014369 0.079156 -0.18357 0.55182 -0.59702 1],tau);
-    Omega=ReOmega+i*ImOmega;
+    Omega=ReOmega+1i*ImOmega;
 
-    Gamma_Circ=1+4*i*besselk(1,-i*sqrt(i*Re))./(sqrt(i*Re).*besselk(0,-i*sqrt(i*Re)));
+    Gamma_Circ=1+4*1i*besselk(1,-1i*sqrt(1i*Re))./(sqrt(1i*Re).*besselk(0,-1i*sqrt(1i*Re)));
     Gamma=Omega.*Gamma_Circ;
 
     figure

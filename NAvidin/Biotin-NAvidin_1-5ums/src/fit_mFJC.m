@@ -1,4 +1,4 @@
-function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(path_processed, base_str, min_sep, max_sep, l_cont, T, l_kuhn, k_segment, v, ax)
+function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(path_processed, base_str, min_sep, max_sep, l_cont, T, l_kuhn, k_segment, ax)
     % Compute thermal energy kBT in J
     kBT = 1.380649e-23 * T;
 
@@ -60,5 +60,5 @@ function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(pat
     k_eff = dF_dz_model(i_model);
     
     % Compute the loading rate:
-    loading_rate = v * k_eff;  % in N/s
+    loading_rate = k_eff;  % in N/s
 end

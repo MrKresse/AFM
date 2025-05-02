@@ -40,11 +40,11 @@ function fit_mFJC_UI(path_processed)
         'String','Next','Units','normalized',...
         'Position',[0.92 0.95 0.07 0.03],'Callback',@nextCurveCallback);
     % Parameter inputs
-    uicontrol(controlPanel, 'Style','text','String','Velocity (m/s):',...
-        'Units','normalized','Position',[0.05 0.84 0.4 0.05]);
-    vField = uicontrol(controlPanel, 'Style','edit','String','5e-7',...
-        'Units','normalized','Position',[0.5 0.84 0.4 0.05]);
-    
+    % uicontrol(controlPanel, 'Style','text','String','Velocity (m/s):',...
+    %     'Units','normalized','Position',[0.05 0.84 0.4 0.05]);
+    % vField = uicontrol(controlPanel, 'Style','edit','String','5e-7',...
+    %     'Units','normalized','Position',[0.5 0.84 0.4 0.05]);
+    % 
     uicontrol(controlPanel, 'Style','text','String','Contuour Length (m):',...
         'Units','normalized','Position',[0.05 0.76 0.4 0.05]);
     l_contField = uicontrol(controlPanel, 'Style','edit','String','5e-8',...
@@ -229,7 +229,8 @@ function fit_mFJC_UI(path_processed)
         errordlg('Please select at least one interval by clicking on the force curve.');
         return;
     end
-    v = str2double(get(vField, 'String'));
+    % v = str2double(get(vField, 'String'));
+    
     L_cont = str2double(get(l_contField, 'String'));
     T_val = str2double(get(TField, 'String'));
     l_kuhn_val = str2double(get(l_kuhnField, 'String'));
@@ -238,7 +239,7 @@ function fit_mFJC_UI(path_processed)
     max_sep = max(selectedIntervals(1,:));
     try
         [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(path_processed, ...
-            selectedFile, min_sep, max_sep, L_cont, T_val, l_kuhn_val, k_seg_val, v, ax);
+            selectedFile, min_sep, max_sep, L_cont, T_val, l_kuhn_val, k_seg_val, ax);
     catch ME
         errordlg(['Fit failed: ' ME.message]);
         return;
@@ -251,7 +252,7 @@ function fit_mFJC_UI(path_processed)
     
     currentFit.base_str = selectedFile;
     % Save fitted parameters instead of the initial guesses.
-    currentFit.parameters = [p_fit, T_val, v];
+    currentFit.parameters = [p_fit, T_val, 1];
     currentFit.loading_rate = loading_rate;
     currentFit.unbinding_force = unbinding_force;
     currentFit.intervals = selectedIntervals;
