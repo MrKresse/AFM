@@ -1,10 +1,4 @@
-%TODO: -fix Mehrere Intervalle in einem: 
-
-%      - fix next button und automatisches laden: Ein next button oder ähnliches bei Drag Down menu für die
-%      ForceCurves sodass einfach die nächste Kurve im directory aufgerufen
-%      wird. Bei auswahl im drag down Menü sollte die Kurve direkt geladen
-%      werden. Der Load Curve button kann trotzdem bleiben.
-function fit_mFJC_UI(path_processed)
+ function fit_mFJC_UI(path_processed)
     % Get the list of files matching the naming scheme *_rupture.mat
     fileList = dir(fullfile(path_processed, '*_rupture.mat'));
     fileNames = {fileList.name};
@@ -40,11 +34,11 @@ function fit_mFJC_UI(path_processed)
         'String','Next','Units','normalized',...
         'Position',[0.92 0.95 0.07 0.03],'Callback',@nextCurveCallback);
     % Parameter inputs
-    % uicontrol(controlPanel, 'Style','text','String','Velocity (m/s):',...
-    %     'Units','normalized','Position',[0.05 0.84 0.4 0.05]);
-    % vField = uicontrol(controlPanel, 'Style','edit','String','5e-7',...
-    %     'Units','normalized','Position',[0.5 0.84 0.4 0.05]);
-    % 
+    uicontrol(controlPanel, 'Style','text','String','Velocity (m/s):',...
+        'Units','normalized','Position',[0.05 0.84 0.4 0.05]);
+    vField = uicontrol(controlPanel, 'Style','edit','String','5e-7',...
+        'Units','normalized','Position',[0.5 0.84 0.4 0.05]);
+
     uicontrol(controlPanel, 'Style','text','String','Contuour Length (m):',...
         'Units','normalized','Position',[0.05 0.76 0.4 0.05]);
     l_contField = uicontrol(controlPanel, 'Style','edit','String','5e-8',...
@@ -118,7 +112,7 @@ function fit_mFJC_UI(path_processed)
         set(popupFile, 'Value', idx);
         loadCurveCallback();
     end
-
+    % 
     function loadCurveCallback(~,~)
         % Get the selected file from the popup menu.
         idx = get(popupFile, 'Value');
@@ -141,10 +135,11 @@ function fit_mFJC_UI(path_processed)
         cla(ax);
         hold(ax, 'on');
         hPlot = plot(ax, currentData.z, currentData.F, 'b');
+        %xlim(ax, [0,300]);
         set(hPlot, 'HitTest', 'off');
-        xlabel(ax, 'Extension (m)');
+        xlabel(ax, 'Separation (m)');
         ylabel(ax, 'Force (N)');
-        title(ax, selectedFile);
+        title(ax, '');
         grid(ax, 'on');
         submitButton.Enable = 'off';
         dismissButton.Enable = 'off';
@@ -159,15 +154,98 @@ function fit_mFJC_UI(path_processed)
                 fileFits = allFits(strcmp({allFits.base_str}, selectedFile));
                 for i = 1:length(fileFits)
                     if isfield(fileFits(i), 'z_model') && isfield(fileFits(i), 'F_model')
-                        hLine = plot(ax, fileFits(i).z_model, fileFits(i).F_model, ...%should there be an offset?
-                            'g--','LineWidth',1.5, 'HitTest', 'off');
+                        hLine = plot(ax, fileFits(i).z_model, fileFits(i).F_model, ... %should there be an offset?
+                            'r--','LineWidth',1.5, 'HitTest', 'off');
                         prefitHandles = [prefitHandles; hLine];
                     end
                 end
             end
         end
+
         hold(ax, 'off');
+
+        % ← legend added here (only change)
+        legend(ax, {'Retract', 'mFJC model'});
     end
+
+    % 
+    %  function loadCurveCallback(~,~)
+    % % Get the containing figure and resize it
+    % 
+    % 
+    % % Get the selected file
+    % idx = get(popupFile, 'Value');
+    % fileNamesCell = get(popupFile, 'String');
+    % selectedFile = fileNamesCell{idx};
+    % full_path = fullfile(path_processed, selectedFile);
+    % 
+    % % Load data
+    % try
+    %     data = load(full_path);
+    % catch ME
+    %     errordlg(['Error loading file: ' ME.message]);
+    %     return;
+    % end
+    % if ~isfield(data, 'scaled_deflection') || ~isfield(data, 'shifted_height')
+    %     errordlg('Selected file does not contain rupture event data.');
+    %     return;
+    % end
+    % 
+    % % Prepare data in nm / pN
+    % currentData.z = data.shifted_height   * 1e9;   % m → nm
+    % currentData.F = data.scaled_deflection * 1e12; % N → pN
+    % 
+    % % Clear and plot
+    % cla(ax);
+    % hold(ax, 'on');
+    % hPlot = plot(ax, currentData.z, currentData.F, 'b', 'LineWidth', 1.5);
+    % set(hPlot, 'HitTest', 'off');
+    % 
+    % % Axis formatting
+    % xlim(ax, [0, 150]);
+    % ylim(ax, [-250,500]);
+    % xlabel(ax, 'Separation (nm)', 'FontSize', 22);
+    % ylabel(ax, 'Force (pN)',     'FontSize', 22);
+    % grid(ax, 'on');
+    % set(ax, 'FontSize', 22);
+    % box(ax, 'on');
+    % 
+    % % Disable buttons while plotting
+    % submitButton.Enable = 'off';
+    % dismissButton.Enable = 'off';
+    % 
+    % % Overlay any pre‑computed mFJC fits (also scaled)
+    % fitFile = fullfile(path_processed, 'fitResults.mat');
+    % if exist(fitFile, 'file')
+    %     loadedData = load(fitFile);
+    %     if isfield(loadedData, 'fitResults')
+    %         allFits  = loadedData.fitResults;
+    %         fileFits = allFits(strcmp({allFits.base_str}, selectedFile));
+    %         for i = 1:numel(fileFits)
+    %             if isfield(fileFits(i), 'z_model') && isfield(fileFits(i), 'F_model')
+    %                 % scale fit to nm / pN
+    %                 zfit = fileFits(i).z_model   * 1e9;
+    %                 Ffit = fileFits(i).F_model   * 1e12;
+    %                 plot(ax, zfit, Ffit, 'LineStyle', '--', ...
+    %                 'Color',    [1, 0.5, 0],  'LineWidth', 1.5, 'HitTest', 'off');
+    %             end
+    %         end
+    %     end
+    % end
+% 
+%     hold(ax, 'off');
+% 
+%     % Legend & export
+%     legend(ax, {'Retract', 'mFJC model'}, 'FontSize', 22, 'Location', 'best');
+% 
+%     drawnow;
+% 
+%     % Export just the axes content at 800×600px (150 DPI → 800×600 = 5.33×4 in)
+%     exportgraphics(ax, 'mFJC_fit.png', ...
+%                    'Resolution', 150, ...
+%                    'BackgroundColor', 'white');
+% end
+
 
     function deleteFitsCallback(~,~)
         if isempty(selectedFile)
@@ -229,7 +307,7 @@ function fit_mFJC_UI(path_processed)
         errordlg('Please select at least one interval by clicking on the force curve.');
         return;
     end
-    % v = str2double(get(vField, 'String'));
+    v = str2double(get(vField, 'String'));
     
     L_cont = str2double(get(l_contField, 'String'));
     T_val = str2double(get(TField, 'String'));
@@ -239,7 +317,7 @@ function fit_mFJC_UI(path_processed)
     max_sep = max(selectedIntervals(1,:));
     try
         [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(path_processed, ...
-            selectedFile, min_sep, max_sep, L_cont, T_val, l_kuhn_val, k_seg_val, ax);
+            selectedFile, min_sep, max_sep, L_cont, T_val, l_kuhn_val, k_seg_val, v, ax);
     catch ME
         errordlg(['Fit failed: ' ME.message]);
         return;

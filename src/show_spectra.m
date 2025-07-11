@@ -10,10 +10,10 @@ invols=110e-9;
 %NData=64000;
 kB=1.3806505e-23;
 T=300;
-
+%GEOMETRIE
 %E=150e9;    % Elastizitätsmodul, Si
 E=169e9;    % Elastizitätsmodul, Si
-rho=2.33e3; % Dichte Beam, Si
+rho=2.33e3; % Dichte Beam, SiNitrit!!!!
 %rho_fl=1.18; % Dichte Umgebung, Luft
 %eta=1.86e-5;   % Viskosität Umgebung, Luft
 rho_fl = 997; % Dichte Wasser

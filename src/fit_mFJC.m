@@ -1,4 +1,4 @@
-function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(path_processed, base_str, min_sep, max_sep, l_cont, T, l_kuhn, k_segment, ax)
+function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(path_processed, base_str, min_sep, max_sep, l_cont, T, l_kuhn, k_segment, v, ax)
     % Compute thermal energy kBT in J
     kBT = 1.380649e-23 * T;
 
@@ -25,13 +25,13 @@ function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(pat
     
     % Perform the nonlinear least squares fit using lsqcurvefit.
     options = optimoptions('lsqcurvefit', 'Display','iter', ...
-        'FunctionTolerance',1e-25, 'OptimalityTolerance',1e-25, 'StepTolerance',1e-25);
+        'FunctionTolerance',1e-30, 'OptimalityTolerance',1e-25, 'StepTolerance',1e-25);
     [p_fit, ~, ~, ~, ~] = lsqcurvefit(mFJC, p0, -F_fit, z_fit, lb, ub, options);
     
     % Plot the original data and the fitted mFJC model on the provided axes.
     axes(ax);  % Switch to the target axes
     cla(ax);
-    plot(ax, z, F, 'b', 'DisplayName', 'Data');
+    plot(ax, z, F, 'b', 'DisplayName', 'Retract');
     hold(ax, 'on');
     
     % Define a force range for the model (using positive values for computation)
@@ -42,7 +42,7 @@ function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(pat
     F_model = -F_range;
     
     % Plot the fitted curve
-    plot(ax, z_model, F_model, 'r-', 'LineWidth',2, 'DisplayName', 'mFJC Fit');
+    plot(ax, z_model, F_model, 'r-', 'LineWidth',2, 'DisplayName', 'mFJC model');
     legend(ax, 'show');
     grid(ax, 'on');
     hold(ax, 'off');
@@ -60,5 +60,5 @@ function [loading_rate, unbinding_force, z_model, F_model, p_fit] = fit_mFJC(pat
     k_eff = dF_dz_model(i_model);
     
     % Compute the loading rate:
-    loading_rate = k_eff;  % in N/s
+    loading_rate = v*k_eff;  % in N/s
 end
