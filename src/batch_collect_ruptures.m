@@ -3,7 +3,8 @@ function out = batch_collect_ruptures(force_dir, path_processed, lower, upper, v
 %
 % Required inputs:
 %   force_dir      : struct array (from dir(...)) with .name for each curve
-%   path_processed : folder containing '<base>_retract_scaled.mat_rupture.mat'
+%   path_processed : folder containing '<base>_retract_scaled.mat' or
+%                    '<base>_retract_scaled.mat_rupture.mat' if 'use_rupture_files' = true
 %   lower, upper   : preferred separation window [m]
 %
 % Optional name-value arguments (defaults in []):
@@ -12,6 +13,9 @@ function out = batch_collect_ruptures(force_dir, path_processed, lower, upper, v
 %   'use_movmedian'   [5]     odd window for movmedian (0 disables)
 %   'strict_window'   [true]  require z_pre>=lower & z_post<=upper
 %   'mask_zmax'       [1e-7]  base mask: only use z <= mask_zmax
+%   'use_rupture_files' [false] load '<base>_retract_scaled.mat_rupture.mat' instead of default
+%   'write_cache'       [true]  save rupture_info.mat cache next to processed data
+%   'cache_file'        [fullfile(path_processed,'rupture_info.mat')]
 %
 % Output struct 'out' (all SI units: N, m):
 %   .results(:) : per-curve struct with fields:
@@ -21,9 +25,10 @@ function out = batch_collect_ruptures(force_dir, path_processed, lower, upper, v
 %   .sorted_dF  : sorted ΔF values (N)
 %   .table      : MATLAB table view of results
 %
-% Example:
-%   out = batch_collect_ruptures(force_dir, path_processed, 1e-8, 4e-8);
-%   top100 = out.table(out.sorted_idx(1:100), :);
+% Also (if write_cache): writes 'rupture_info.mat' with per-curve metadata:
+%   rupture_info(i) = struct('base_str','...','found',true,'z_pre',...,'z0_left',...,
+%                            'z_post',...,'F_pre',...,'F_post',...,'dF',...,
+%                            'n_points',...,'n_bins',...,'params',p,'timestamp',datetime)
 
 % ---------- Parse inputs ----------
 ip = inputParser;
@@ -32,6 +37,9 @@ ip.addParameter('min_pts_per_bin', 1);
 ip.addParameter('use_movmedian',   5);
 ip.addParameter('strict_window',   true);
 ip.addParameter('mask_zmax',       1e-7);
+ip.addParameter('use_rupture_files', false);
+ip.addParameter('write_cache',     true);
+ip.addParameter('cache_file',      fullfile(path_processed,'rupture_info.mat'));
 ip.parse(varargin{:});
 p = ip.Results;
 
@@ -46,10 +54,20 @@ dF_keep   = nan(num_curves,1);
 z_keep    = nan(num_curves,1);
 idx_curve = false(num_curves,1);
 
+rupture_info = struct('base_str',{},'found',{},'z_pre',{},'z0_left',{},'z_post',{},...
+                      'F_pre',{},'F_post',{},'dF',{},'n_points',{},'n_bins',{},...
+                      'params',{},'timestamp',{});
+
 % ---------- Batch process each curve ----------
 for cid = 1:num_curves
     base_str = force_dir(cid).name;
-    file = fullfile(path_processed,[base_str,'_retract_scaled.mat']);
+
+    % Choose file variant
+    if p.use_rupture_files
+        file = fullfile(path_processed, [base_str, '_retract_scaled.mat_rupture.mat']);
+    else
+        file = fullfile(path_processed, [base_str, '_retract_scaled.mat']);
+    end
     if ~isfile(file), continue; end
 
     S = load(file);
@@ -63,7 +81,6 @@ for cid = 1:num_curves
     z_use = z(mask);  F_use = F(mask);
     [z_sorted, ord] = sort(z_use);
     F_sorted = F_use(ord);
-
     if p.use_movmedian > 0
         F_sorted = movmedian(F_sorted, p.use_movmedian);
     end
@@ -71,7 +88,7 @@ for cid = 1:num_curves
     % ---- Bin by separation (medians) ----
     zmin = max(min(z_sorted), lower);
     zmax = min(max(z_sorted), upper);
-    if zmax <= zmin, continue; end
+    if ~(zmax > zmin), continue; end
 
     edges = zmin:p.dz_bin:zmax;
     if edges(end) < zmax, edges(end+1) = zmax; end
@@ -108,7 +125,6 @@ for cid = 1:num_curves
 
     cand = find(pos_jump & neg_pre & in_win);
     if isempty(cand)
-        % fallback: largest positive jump anywhere
         pos_all = find(dF > 0);
         if isempty(pos_all), continue; end
         [~, imax] = max(dF(pos_all));
@@ -133,12 +149,35 @@ for cid = 1:num_curves
     dF_keep(cid) = dF(k);
     z_keep(cid)  = zL(k);
     idx_curve(cid) = true;
+
+    % ---- Compute first zero-crossing LEFT of z_pre ----
+    z0_left = local_first_zero_left(z_sorted, F_sorted, zL(k), p.dz_bin);
+
+    % ---- Append to cache ----
+    rupture_info(end+1,1) = struct( ...
+        'base_str', base_str, ...
+        'found', true, ...
+        'z_pre', zL(k), ...
+        'z0_left', z0_left, ...
+        'z_post', zR(k), ...
+        'F_pre', FL(k), ...
+        'F_post', FR(k), ...
+        'dF', dF(k), ...
+        'n_points', numel(z_use), ...
+        'n_bins', numel(F_bin), ...
+        'params', p, ...
+        'timestamp', datetime('now'));
 end
 
 % ---------- Sort all by jump magnitude ----------
 valid_idx = find(idx_curve);
-[sorted_dF, order] = sort(dF_keep(valid_idx), 'descend');
-sorted_idx = valid_idx(order);
+if ~isempty(valid_idx)
+    [sorted_dF, order] = sort(dF_keep(valid_idx), 'descend');
+    sorted_idx = valid_idx(order);
+else
+    sorted_dF = [];
+    sorted_idx = [];
+end
 
 % ---------- Build table & output ----------
 T = struct2table(results);
@@ -152,7 +191,40 @@ out = struct( ...
     'sorted_dF',   sorted_dF, ...
     'table',       T );
 
-%fprintf('Picked rupture events in %d / %d curves.\n', nnz(idx_curve), num_curves);
-fprintf('Largest ΔF = %.2f pN; Median = %.2f pN.\n', ...
-        max(sorted_dF)*1e12, median(sorted_dF)*1e12);
+%fprintf('Largest ΔF = %.2f pN; Median = %.2f pN.\n', ...
+%        (isempty(sorted_dF) * NaN) + (~isempty(sorted_dF) * max(sorted_dF))*1e12, ...
+%        (isempty(sorted_dF) * NaN) + (~isempty(sorted_dF) * median(sorted_dF))*1e12 );
+
+% ---------- Write cache ----------
+if p.write_cache
+    try
+        save(p.cache_file, 'rupture_info');
+    catch ME
+        warning('Could not save rupture_info cache: %s', ME.message);
+    end
+end
+
+end % main function
+
+% ===== helper =====
+function z0 = local_first_zero_left(z_sorted, F_sorted, z_ref, dz_hint)
+% Find first zero-crossing to the LEFT of z_ref using sorted data
+z0 = NaN;
+left = z_sorted < z_ref;
+if nnz(left) < 2
+    z0 = min(z_sorted);
+    return;
+end
+zl = z_sorted(left); Fl = F_sorted(left);
+sgn = sign(Fl);
+idx = find(diff(sgn) ~= 0);
+if ~isempty(idx)
+    c = idx(end);
+    z1 = zl(c); z2 = zl(c+1); f1 = Fl(c); f2 = Fl(c+1);
+    if f2 ~= f1
+        z0 = z1 + (0 - f1) * (z2 - z1) / (f2 - f1);
+    end
+end
+if ~isfinite(z0), z0 = max(min(z_sorted), z_ref - 5*dz_hint); end
+if z0 >= z_ref,   z0 = z_ref - max(5*dz_hint, eps(z_ref));   end
 end
